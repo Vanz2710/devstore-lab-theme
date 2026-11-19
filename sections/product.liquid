@@ -1,0 +1,121 @@
+{% comment %}
+  This section is used in the product template to render product page with
+  media, content, and add-to-cart form.
+
+  https://shopify.dev/docs/storefronts/themes/architecture/templates/product
+{% endcomment %}
+
+<div class="product-images">
+  {% for image in product.images %}
+    {% render 'image', class: 'product-image', image: image %}
+  {% endfor %}
+</div>
+
+<div class="product-info">
+  <h1>{{ product.title | escape }}</h1>
+  <p id="product-price">{{ product.price | money }}</p>
+  <p>{{ product.description }}</p>
+</div>
+
+<p id="stock-status">
+  {% if product.selected_or_first_available_variant.available %}
+    In stock
+  {% else %}
+    Out of stock
+  {% endif %}
+</p>
+
+
+<div class="product-form">
+  {% form 'product', product %}
+    {% assign current_variant = product.selected_or_first_available_variant %}
+
+    <select name="id" id="variant-select">
+      {% for variant in product.variants %}
+        <option
+          value="{{ variant.id }}"
+          data-price="{{ variant.price | money }}"
+          data-available="{{ variant.available }}"
+          {% if variant == current_variant %}
+            selected="selected"
+          {% endif %}
+        >
+          {{ variant.title | escape }} - {{ variant.price | money }}
+
+          {%  unless variant.available %}
+            - Sold Out
+          {% endunless %}
+        </option>
+      {% endfor %}
+    </select>
+
+    <input type="text" name="quantity" min="1" value="1">
+
+    <button
+      id="add-to-cart"
+      type="submit"
+      {% unless current_variant.available %}
+        disabled
+      {% endunless %}
+    >
+      {% if current_variant.available %}
+        Add to cart
+      {% else %}
+        Sold Out
+      {% endif %}
+    </button>
+
+<div
+  id="dynamic-checkout"
+  {% unless current_variant.available %}
+    hidden
+  {% endunless %}
+>
+  {{ form | payment_button }}
+</div>
+
+
+{% endform %}
+</div>
+
+<script>
+  // Get references to the elements
+  const variantSelect = document.getElementById('variant-select');
+  const productPrice = document.getElementById('product-price');
+  const addToCartButton = document.getElementById('add-to-cart');
+  const stockStatus = document.getElementById('stock-status');
+  const dynamicCheckout = document.getElementById('dynamic-checkout');
+
+  // Listen for changes on the variant select dropdown
+  variantSelect.addEventListener('change', function() {
+    const selectedPrice = variantSelect.selectedOptions[0].dataset.price;
+    const isAvailable = variantSelect.selectedOptions[0].dataset.available === 'true';
+
+    // Update the button text based on availability
+    if (isAvailable) {
+      addToCartButton.textContent = 'Add to cart';
+    } else {
+      addToCartButton.textContent = 'Sold Out';
+    }
+
+    // Update the price and stock status
+    console.log('Selected variant price:', selectedPrice);
+    console.log('Is available:', isAvailable);
+
+    // Update the UI elements
+    productPrice.textContent = selectedPrice;
+    addToCartButton.disabled = !isAvailable;
+    stockStatus.textContent = isAvailable ? 'In stock' : 'Out of stock';
+    dynamicCheckout.hidden = !isAvailable;
+  });
+</script>
+
+{% schema %}
+{
+  "name": "t:general.product",
+  "settings": [],
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  }
+}
+{% endschema %}

@@ -1,0 +1,5 @@
+{% if button_label != blank and button_url != blank %}
+    <a href="{{ button_url | escape }}" class="devstore-promo__button">
+        {{ button_label | escape }}
+    </a>
+{% endif %}

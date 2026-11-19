@@ -1,0 +1,121 @@
+<section class="devstore-promo">
+
+  <div class="devstore-promo__content">
+    
+    <h2>{{ section.settings.heading | escape }}</h2>
+    <p>{{ section.settings.description | escape }}</p>
+    {% render 'promo-button',
+      button_label: section.settings.button_label,
+      button_url: section.settings.button_link
+    %}
+
+    {% if section.blocks.size > 0 %}
+      <ul class="devstore-promo__benefits">
+        {% for block in section.blocks %}
+          {% if block.type == 'benefit' %}
+            <li {{ block.shopify_attributes }}>
+              {{ block.settings.text | escape }}
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+  </div>
+  <div>
+    {% if section.settings.promo_image != blank %}
+      {{ 
+        section.settings.promo_image
+        | image_url: width: 840
+        | image_tag:
+          class: 'devstore-promo-image',
+          widths: '210, 420, 630, 840',
+          sizes: '(max-width: 420px) 100vw, 420px'
+      }}
+
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DevStore Promo",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Welcome to our store"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description",
+      "default": "Discover what makes our store Special!"
+        
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "Explore Products"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "image_picker",
+      "id": "promo_image",
+      "label": "Promotional image"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "benefit",
+      "name": "Benefit",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Benefit text",
+          "default": "Quality products"
+        }
+      ]
+    
+    }
+  ],
+  "presets": [
+    {
+      "name": "DevStore Promo"
+    }
+  ]
+}
+{% endschema %}
+
+{% stylesheet %}
+  
+  .devstore-promo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+    padding: 24px;
+  }
+
+  .devstore-promo-image {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    border-radius: 12px;
+  }
+  @media (max-width: 767px) {
+    .devstore-promo {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+  }
+
+{% endstylesheet %}

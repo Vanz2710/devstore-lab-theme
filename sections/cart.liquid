@@ -1,0 +1,171 @@
+{% comment %}
+  This section is used in the cart template to render /cart page with an
+  overview of the items in customer's cart.
+
+  https://shopify.dev/docs/storefronts/themes/architecture/templates/cart
+{% endcomment %}
+
+<h1>{{ 'cart.title' | t }}</h1>
+
+<p id="cart-empty" {% if cart.item_count > 0 %}hidden{% endif %}>
+  Your cart is empty.
+  <a href="{{ routes.all_products_collection_url }}">Continue shopping</a>
+</p>
+
+<form
+  action="{{ routes.cart_url }}"
+  method="post"
+  id="cart-form"
+  {% if cart.item_count == 0 %}hidden{% endif %}
+>
+  <table>
+    {% for item in cart.items %}
+      <tr>
+        <td class="cart-item-image">
+          {% render 'image', image: item.image, url: item.url %}
+        </td>
+        <td>
+          <p>{{ item.product.title }}</p>
+          {% unless item.product.has_only_default_variant %}
+            <p>Variant: {{ item.variant.title | escape }}</p>
+          {% endunless %}
+          <p>Unit Price: {{ item.final_price | money }}</p>
+          <p>
+            Line Total:
+            <span id="line-total-{{ item.key }}">
+              {{ item.final_line_price | money }}
+            </span>
+          </p>
+          <button
+            type="submit"
+            class="ajax-cart-remove"
+            data-key="{{ item.key }}"
+            formnovalidate
+          >
+            {{ 'cart.remove' | t }}
+          </button>
+        </td>
+        <td>
+          <input
+            type="number"
+            name="updates[]"
+            value="{{ item.quantity }}"
+            min="1"
+            step="1"
+            required
+          >
+          <input
+            type="submit"
+            class="ajax-cart-update"
+            data-key="{{ item.key }}"
+            value="{{ 'cart.update' | t }}"
+          >
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  <p>
+    Cart Total:
+    <span id="cart-total">
+      {{ cart.total_price | money }}
+    </span>
+  </p>
+
+  <input type="submit" name="checkout" value="{{ 'cart.checkout' | t }}">
+</form>
+
+<script>
+  const cartForm = document.getElementById('cart-form');
+
+  cartForm.addEventListener('submit', function (event) {
+    const clickedButton = event.submitter;
+
+    if (
+      clickedButton.classList.contains('ajax-cart-update') ||
+      clickedButton.classList.contains('ajax-cart-remove')
+    ) {
+      event.preventDefault();
+
+      const cartRow = clickedButton.closest('tr');
+      const quantityInput = cartRow.querySelector('input[name="updates[]"]');
+      const isRemove = clickedButton.classList.contains('ajax-cart-remove');
+      const quantity = isRemove ? 0 : Number(quantityInput.value);
+      const key = clickedButton.dataset.key;
+
+      console.log('Updating cart item', key, 'to quantity', quantity);
+
+      fetch(window.Shopify.routes.root + 'cart/change.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          id: key,
+          quantity: quantity
+        })
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Cart update failed');
+          }
+          return response.json();
+        })
+        .then(cart => {
+          console.log('Updated cart count:', cart.item_count);
+
+          const formatPrice = (cents) => {
+            return new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: cart.currency
+            }).format(cents / 100);
+          };
+
+          // Header counter
+          const cartCount = document.getElementById('cart-count');
+          cartCount.textContent = cart.item_count;
+          cartCount.hidden = cart.item_count === 0;
+
+          // Line total, or remove the row if the item is gone
+          const lineTotal = document.getElementById(`line-total-${key}`);
+          const updatedItem = cart.items.find(item => item.key === key);
+
+          if (updatedItem) {
+            lineTotal.textContent = formatPrice(updatedItem.final_line_price);
+          } else {
+            cartRow.remove();
+          }
+
+          // Cart total
+          const cartTotal = document.getElementById('cart-total');
+          cartTotal.textContent = formatPrice(cart.total_price);
+
+          // Empty cart state
+          if (cart.item_count === 0) {
+            cartForm.hidden = true;
+            document.getElementById('cart-empty').hidden = false;
+          }
+        })
+        .catch(error => {
+          console.error('Cart error:', error);
+        });
+    }
+  });
+</script>
+
+<style>
+  .cart-item-image img {
+    max-width: 100%;
+    height: auto;
+    width: 120px;
+    object-fit: contain;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "t:general.cart",
+  "settings": []
+}
+{% endschema %}
